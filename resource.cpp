@@ -1,48 +1,43 @@
 #include "sys.h"
 #include "rtos_api.h"
-#include <stdio.h>
+#include <cstdio>
 #include <iostream>
-void InitRes(size_t ResNum, std::string name)
-{
-	std::cout << "InitRes " << name << std::endl;
-	ResourceQueue[ResNum].name = name;
-	ResourceQueue[ResNum].task = -1;
+
+void InitRes(size_t resNum, const std::string &name) {
+    std::cout << "Resource [" << name << "] was initialized" << std::endl;
+    ResourceQueue[resNum].name = name;
+    ResourceQueue[resNum].task = -1;
 }
-void PIP_GetRes(size_t ResNum)
-{
-	std::cout <<"PIP_GetRes %s" << ResourceQueue[ResNum].name << std::endl;
-	while (ResourceQueue[ResNum].task != -1)
-	{
-		size_t rtask = ResourceQueue[ResNum].task;
-		std::cout <<"Resource is blocked by %s" << TaskQueue[rtask].name << std::endl;
-		if (TaskQueue[rtask].ceiling_priority >=
-			TaskQueue[RunningTask].ceiling_priority)
-		{
-			std::cout <<"Raise priority from %i to %i "
-				<< " " << TaskQueue[rtask].ceiling_priority
-				 << " " << (TaskQueue[RunningTask].ceiling_priority - 1);
-			TaskQueue[rtask].ceiling_priority = TaskQueue[RunningTask].ceiling_priority - 1;
-			Schedule(rtask);
-		}
-		Dispatch();
-	}
-	ResourceQueue[ResNum].task = RunningTask;
-	std::cout <<"End of PIP_GetRes %s" << ResourceQueue[ResNum].name << std::endl;
+
+void GetRes(size_t resNum) {
+    std::cout << "Resource [" << ResourceQueue[resNum].name << "] was requested" << std::endl;
+    while (ResourceQueue[resNum].task != -1) {
+        size_t taskNum = ResourceQueue[resNum].task;
+        std::cout << "Resource [" << ResourceQueue[resNum].name
+                  << "] is blocked by task [" << TaskQueue[taskNum].name << "]" << std::endl;
+        if (TaskQueue[taskNum].ceiling_priority >= TaskQueue[TaskInProcess].ceiling_priority) {
+            std::cout << "Resource [" << ResourceQueue[resNum].name
+                      << "] priority was changed to ["
+                      << TaskQueue[taskNum].ceiling_priority - 1 << "]" << std::endl;
+            TaskQueue[taskNum].ceiling_priority = TaskQueue[TaskInProcess].ceiling_priority - 1;
+            Schedule(taskNum);
+        }
+        Dispatch();
+    }
+    ResourceQueue[resNum].task = TaskInProcess;
+    std::cout << "End of resource [" << ResourceQueue[resNum].name << "] request" << std::endl;
 }
-void PIP_ReleaseRes(size_t ResNum)
-{
-	std::cout <<"PIP_ReleaseRes %s " << ResourceQueue[ResNum].name << std::endl;
-	size_t rtask = ResourceQueue[ResNum].task;
-	ResourceQueue[ResNum].task = -1;
-	if (TaskQueue[rtask].ceiling_priority != TaskQueue[rtask].priority)
-	{
-		std::cout <<"Reset prioritet for %s from %i to %i" <<
-			" " <<TaskQueue[rtask].name << " " <<
-			TaskQueue[rtask].ceiling_priority << " " <<
-			(TaskQueue[rtask].priority) << std::endl;
-		TaskQueue[rtask].ceiling_priority = TaskQueue[rtask].priority;
-		Schedule(rtask);
-	}
-	
-	std::cout <<"End of PIP_ReleaseRes %s " << ResourceQueue[ResNum].name << std::endl;
+
+void ReleaseRes(size_t resNum) {
+    std::cout << "Resource [" << ResourceQueue[resNum].name << "] was released" << std::endl;
+    size_t taskNum = ResourceQueue[resNum].task;
+    ResourceQueue[resNum].task = -1;
+    if (TaskQueue[taskNum].ceiling_priority != TaskQueue[taskNum].priority) {
+        std::cout << "Resource [" << ResourceQueue[resNum].name
+                  << "] priority was changed to ["
+                  << TaskQueue[taskNum].priority << "]" << std::endl;
+        TaskQueue[taskNum].ceiling_priority = TaskQueue[taskNum].priority;
+        Schedule(taskNum);
+    }
+    std::cout << "End of resource [" << ResourceQueue[resNum].name << "] release" << std::endl;
 }

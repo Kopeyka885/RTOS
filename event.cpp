@@ -1,36 +1,33 @@
-#include <stdio.h>
+#include <cstdio>
+
 #include "sys.h"
 #include "rtos_api.h"
-void SetSysEvent(const TEventMask & mask)
-{
-	std::cout << "SetSysEvent " << mask << std::endl;
-	WorkingEvents |= mask;
-	for (size_t i = 0; i < MAX_TASK; i++)
-	{
-		if (TaskQueue[i].task_state == TASK_WAITING &&
-			(WorkingEvents & TaskQueue[i].waiting_events))
-		{
-			TaskQueue[i].waiting_events &= !mask;
-			TaskQueue[i].task_state = TASK_READY; 
-			std::cout << "Task is ready" << std::endl; 
-			std::cout << TaskQueue[i].name << std::endl;
-		}
-	}
-	WorkingEvents &= !mask;
-	std::cout << "End of SetSysEvent "<< mask << std::endl;
+
+void SetSysEvent(const TEventMask &eventMask) {
+    std::cout << "Setting the system event: [" << eventMask << "]" << std::endl;
+    EventsInProcess |= eventMask;
+    for (auto &task : TaskQueue) {
+        if (task.task_state == TTaskState::TASK_WAITING
+            && (EventsInProcess & task.waiting_events)) {
+            task.waiting_events &= !eventMask;
+            task.task_state = TTaskState::TASK_READY;
+            std::cout << "Task [" << task.name << "] status set to READY" << std::endl;
+        }
+    }
+    EventsInProcess &= !eventMask;
+    std::cout << "End of setting of the system event: [" << eventMask << "]" << std::endl;
 }
-void GetSysEvent(TEventMask * mask)
-{
-	*mask = WorkingEvents;
+
+void GetSysEvent(TEventMask *eventMask) {
+    *eventMask = EventsInProcess;
 }
-void WaitSysEvent(const TEventMask & mask)
-{
-	std::cout << "WaitSysEvent " << mask << std::endl;
-	TaskQueue[RunningTask].waiting_events = mask;
-	if ((WorkingEvents & mask) == 0)
-	{//ждемс
-		TaskQueue[RunningTask].task_state = TASK_WAITING;
-		Dispatch();
-	}
-	std::cout << "End of WaitSysEvent "<< mask << std::endl;
-}
+
+void WaitSysEvent(const TEventMask &eventMask) {
+    std::cout << "Waiting for system event: [" << eventMask << "]" << std::endl;
+    TaskQueue[TaskInProcess].waiting_events = eventMask;
+    if ((EventsInProcess & eventMask) == 0) {
+        TaskQueue[TaskInProcess].task_state = TTaskState::TASK_WAITING;
+        Dispatch();
+    }
+    std::cout << "End of waiting for system event: [" << eventMask << "]" << std::endl;
+}
